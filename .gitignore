@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.venv/
+
+# ChromaDB
+chroma_db/
+
+# Uploaded files
+app/data/resumes/
+
+# Mac
+.DS_Store
