@@ -23,7 +23,7 @@ numpy==1.26.4
 
 chromadb==0.5.5
 
-supabase==2.7.4
+supabase==2.15.3
 postgrest==0.16.11
 
 python-multipart==0.0.9
