@@ -11,13 +11,12 @@ langchain-text-splitters==0.3.0
 
 openai==1.51.0
 
-faiss-cpu==1.8.0.post1
-
 sentence-transformers==3.1.1
 transformers==4.45.1
 torch==2.4.1
 
 pypdf==5.0.1
+pymupdf==1.24.10
 
 python-dotenv==1.0.1
 
@@ -26,6 +25,8 @@ pydantic==2.9.2
 numpy==1.26.4
 
 chromadb==0.5.5
+
 supabase==2.7.4
 postgrest==0.16.11
-pymupdf==1.24.10
+
+python-multipart==0.0.9
