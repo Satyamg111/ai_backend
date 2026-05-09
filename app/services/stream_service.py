@@ -70,6 +70,6 @@ Question:
 
             full_response += chunk.content
 
-            yield chunk.content
+            yield f"data: {chunk.content}\n\n"
 
     # save history later if needed

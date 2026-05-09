@@ -59,6 +59,11 @@ async def stream_chat(
     )
 
     return StreamingResponse(
-        generator,
-        media_type="text/plain"
-    )
+    generator,
+    media_type="text/event-stream",
+    headers={
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no"
+    }
+)
