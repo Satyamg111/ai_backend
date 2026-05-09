@@ -16,7 +16,11 @@ from fastapi import (
 from langchain_text_splitters import (
     RecursiveCharacterTextSplitter
 )
+from fastapi import Depends
 
+from app.auth.admin_auth import (
+    verify_admin
+)
 from app.db.chroma import collection
 
 router = APIRouter()
@@ -37,9 +41,9 @@ os.makedirs(
 # ============================================
 
 @router.post("/resume")
-
 async def upload_resume(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    admin=Depends(verify_admin)
 ):
 
     # ========================================
