@@ -1,29 +1,64 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
 
-from app.services.agent_service import (
-    AgentService
+from fastapi.responses import (
+    StreamingResponse
+)
+
+from app.models.chat_models import (
+    ChatRequest
+)
+
+from app.graphs.resume_graph import (
+    resume_graph
+)
+
+from app.services.stream_service import (
+    stream_response
 )
 
 router = APIRouter()
 
-agent_service = AgentService()
+# ============================================
+# NORMAL CHAT
+# ============================================
 
-class ChatRequest(BaseModel):
-    agent: str
-    message: str
+@router.post("")
 
-@router.post("/")
+async def chat(
+    request: ChatRequest
+):
 
-async def chat(request: ChatRequest):
-
-    response = await agent_service.execute(
-        request.agent,
-        request.message
-    )
+    result = resume_graph.invoke({
+        "question": request.message
+    })
 
     return {
         "success": True,
-        "agent": request.agent,
-        "response": response
+        "response": result["answer"]
     }
+
+# ============================================
+# STREAM CHAT
+# ============================================
+
+@router.post("/stream")
+
+async def stream_chat(
+    request: ChatRequest
+):
+
+    result = resume_graph.invoke({
+        "question": request.message
+    })
+
+    context = result["context"]
+
+    generator = stream_response(
+        request.message,
+        context
+    )
+
+    return StreamingResponse(
+        generator,
+        media_type="text/plain"
+    )
