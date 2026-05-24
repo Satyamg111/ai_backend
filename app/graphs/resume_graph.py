@@ -24,20 +24,29 @@ from app.db.chroma import collection
 from app.llm.openrouter import llm
 from app.db.supabase import supabase
 
-def get_chat_history():
+def get_chat_history(session_id: str):
+
+    if not session_id:
+        return []
 
     response = supabase.table(
         "chat_history"
-    ).select("*").order(
+    ).select("*").eq(
+        "session_id", session_id
+    ).order(
         "created_at"
     ).limit(10).execute()
 
     return response.data
 
 
-def add_message(question, answer):
+def add_message(session_id: str, question: str, answer: str):
+
+    if not session_id:
+        return
 
     supabase.table("chat_history").insert({
+        "session_id": session_id,
         "user_message": question,
         "assistant_message": answer
     }).execute()
@@ -52,6 +61,7 @@ class AgentState(TypedDict):
     question: str
     context: str
     answer: str
+    session_id: str
 
 # ============================================
 # RETRIEVE NODE
@@ -87,8 +97,9 @@ def generate(state: AgentState):
 
     question = state["question"]
     context = state["context"]
+    session_id = state.get("session_id", "")
 
-    history = get_chat_history()
+    history = get_chat_history(session_id)
 
     messages = []
 
@@ -165,7 +176,7 @@ Question:
     # SAVE CHAT HISTORY
     # ========================================
 
-    add_message(question, answer)
+    add_message(session_id, question, answer)
 
     return {
         "answer": answer

@@ -12,10 +12,11 @@ from langchain_core.messages import (
 
 async def stream_response(
     question: str,
-    context: str
+    context: str,
+    session_id: str
 ):
 
-    history = get_chat_history()
+    history = get_chat_history(session_id)
 
     messages = []
 
@@ -26,6 +27,7 @@ IMPORTANT RULES:
 - Always respond in English
 - Answer ONLY using the resume context
 - Speak professionally
+- Do not respond like "According to resume", "As per resume", "In resume context"
 """
 
     messages.append(
