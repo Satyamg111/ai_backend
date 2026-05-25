@@ -13,7 +13,8 @@ from langchain_core.messages import (
 async def stream_response(
     question: str,
     context: str,
-    session_id: str
+    session_id: str,
+    metadata_out: dict = None
 ):
 
     history = get_chat_history(session_id)
@@ -25,9 +26,9 @@ You are a professional AI interview assistant.
 
 IMPORTANT RULES:
 - Always respond in English
-- Answer ONLY using the resume context
+- Answer ONLY using the provided context, but act as if you already know this information natively.
+- NEVER use phrases like "based on the resume", "according to the context", "as per the document", or "in the resume". Answer directly as if it's your own knowledge.
 - Speak professionally
-- Do not respond like "According to resume", "As per resume", "In resume context"
 """
 
     messages.append(
@@ -73,5 +74,9 @@ Question:
             full_response += chunk.content
 
             yield f"data: {chunk.content}\n\n"
+        
+        if metadata_out is not None and hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
+            metadata_out["input_tokens"] = chunk.usage_metadata.get("input_tokens", 0)
+            metadata_out["output_tokens"] = chunk.usage_metadata.get("output_tokens", 0)
 
     # save history later if needed
