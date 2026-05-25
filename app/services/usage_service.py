@@ -3,6 +3,7 @@
 # app/services/usage_service.py
 # ============================================
 
+from datetime import datetime, timedelta
 from app.db.supabase import supabase
 
 
@@ -19,6 +20,8 @@ class UsageTracker:
         agent: str = "resume",
         status: str = "success",
         error_message: str = None,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
     ):
         try:
             data = {
@@ -29,6 +32,8 @@ class UsageTracker:
                 "response_time_ms": response_time_ms,
                 "agent": agent,
                 "status": status,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
             }
 
             if error_message:
@@ -46,13 +51,16 @@ class UsageTracker:
     # ========================================
 
     @staticmethod
-    def get_summary():
-        """Overall usage summary stats."""
+    def get_summary(days: int = None):
+        """Overall usage summary stats, optionally filtered by days."""
 
         try:
-            result = supabase.table(
-                "chat_usage"
-            ).select("*").execute()
+            query = supabase.table("chat_usage").select("*")
+            if days is not None:
+                cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+                query = query.gte("created_at", cutoff)
+            
+            result = query.execute()
 
             data = result.data
             total = len(data)
@@ -64,6 +72,8 @@ class UsageTracker:
                     "avg_response_time_ms": 0,
                     "error_count": 0,
                     "success_rate": 0,
+                    "total_input_tokens": 0,
+                    "total_output_tokens": 0,
                 }
 
             sessions = len(set(
@@ -82,6 +92,9 @@ class UsageTracker:
                 if d.get("status") == "error"
             )
 
+            total_input = sum(d.get("input_tokens") or 0 for d in data)
+            total_output = sum(d.get("output_tokens") or 0 for d in data)
+
             return {
                 "total_messages": total,
                 "unique_sessions": sessions,
@@ -90,21 +103,27 @@ class UsageTracker:
                 "success_rate": round(
                     (total - errors) / total * 100, 1
                 ),
+                "total_input_tokens": total_input,
+                "total_output_tokens": total_output,
             }
 
         except Exception as e:
             return {"error": str(e)}
 
     @staticmethod
-    def get_recent(limit: int = 50):
-        """Most recent usage logs."""
+    def get_recent(limit: int = 50, days: int = None, offset: int = 0):
+        """Most recent usage logs, optionally filtered by days and paginated."""
 
         try:
-            result = supabase.table(
-                "chat_usage"
-            ).select("*").order(
+            query = supabase.table("chat_usage").select("*").order(
                 "created_at", desc=True
-            ).limit(limit).execute()
+            ).range(offset, offset + limit - 1)
+            
+            if days is not None:
+                cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+                query = query.gte("created_at", cutoff)
+
+            result = query.execute()
 
             return result.data
 

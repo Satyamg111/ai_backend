@@ -62,6 +62,8 @@ class AgentState(TypedDict):
     context: str
     answer: str
     session_id: str
+    input_tokens: int
+    output_tokens: int
 
 # ============================================
 # RETRIEVE NODE
@@ -112,13 +114,14 @@ You are a professional AI interview assistant.
 
 IMPORTANT RULES:
 - Always respond in English
-- Answer ONLY using the resume context
+- Answer ONLY using the provided context, but act as if you already know this information natively.
+- NEVER use phrases like "based on the resume", "according to the context", "as per the document", or "in the resume". Answer directly as if it's your own knowledge.
 - Never say you are another AI model
 - Never introduce yourself as Tencent, Hunyuan, ChatGPT, etc.
 - Speak professionally like the candidate
 - Keep responses concise and natural
 - If information is unavailable, say:
-  'This information is not available in the resume.'
+  'I do not have that information at the moment.'
 """
 
     messages.append(
@@ -171,6 +174,13 @@ Question:
     response = llm.invoke(messages)
 
     answer = response.content
+    
+    input_tokens = 0
+    output_tokens = 0
+    
+    if hasattr(response, "usage_metadata") and response.usage_metadata:
+        input_tokens = response.usage_metadata.get("input_tokens", 0)
+        output_tokens = response.usage_metadata.get("output_tokens", 0)
 
     # ========================================
     # SAVE CHAT HISTORY
@@ -179,7 +189,9 @@ Question:
     add_message(session_id, question, answer)
 
     return {
-        "answer": answer
+        "answer": answer,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens
     }
 
 # ============================================

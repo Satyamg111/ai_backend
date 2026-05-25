@@ -58,6 +58,8 @@ async def chat(
             response_length=len(result["answer"]),
             response_time_ms=elapsed,
             agent=request.agent,
+            input_tokens=result.get("input_tokens", 0),
+            output_tokens=result.get("output_tokens", 0),
         )
 
         return {
@@ -106,6 +108,8 @@ async def stream_chat(
 
     context = result["context"]
 
+    metadata_out = {}
+
     # Wrap the stream generator to track
     # usage after the stream completes
 
@@ -116,7 +120,8 @@ async def stream_chat(
         async for chunk in stream_response(
             request.message,
             context,
-            session_id
+            session_id,
+            metadata_out
         ):
             # chunks are "data: {text}\n\n"
             text = chunk.replace(
@@ -132,6 +137,11 @@ async def stream_chat(
             (time.time() - start) * 1000
         )
 
+        # For stream we track tokens generated during the stream (metadata_out)
+        # plus the tokens used when fetching the context via resume_graph
+        graph_input = result.get("input_tokens", 0)
+        graph_output = result.get("output_tokens", 0)
+        
         UsageTracker.log(
             session_id=session_id,
             ip_address=ip,
@@ -139,6 +149,8 @@ async def stream_chat(
             response_length=len(full_response),
             response_time_ms=elapsed,
             agent=request.agent,
+            input_tokens=graph_input + metadata_out.get("input_tokens", 0),
+            output_tokens=graph_output + metadata_out.get("output_tokens", 0),
         )
 
     return StreamingResponse(
