@@ -23,6 +23,7 @@ from app.db.chroma import collection
 
 from app.llm.openrouter import llm
 from app.db.supabase import supabase
+from app.services.config_service import ConfigService
 
 def get_chat_history(session_id: str):
 
@@ -106,23 +107,10 @@ def generate(state: AgentState):
     messages = []
 
     # ========================================
-    # SYSTEM PROMPT
+    # SYSTEM PROMPT (fetched from DB)
     # ========================================
 
-    system_prompt = """
-You are a professional AI interview assistant.
-
-IMPORTANT RULES:
-- Always respond in English
-- Answer ONLY using the provided context, but act as if you already know this information natively.
-- NEVER use phrases like "based on the resume", "according to the context", "as per the document", or "in the resume". Answer directly as if it's your own knowledge.
-- Never say you are another AI model
-- Never introduce yourself as Tencent, Hunyuan, ChatGPT, etc.
-- Speak professionally like the candidate
-- Keep responses concise and natural
-- If information is unavailable, say:
-  'I do not have that information at the moment.'
-"""
+    system_prompt = ConfigService.get_system_prompt(agent="resume")
 
     messages.append(
         SystemMessage(content=system_prompt)

@@ -3,6 +3,7 @@ from app.graphs.resume_graph import (
 )
 
 from app.llm.openrouter import llm
+from app.services.config_service import ConfigService
 
 from langchain_core.messages import (
     HumanMessage,
@@ -21,15 +22,8 @@ async def stream_response(
 
     messages = []
 
-    system_prompt = """
-You are a professional AI interview assistant.
-
-IMPORTANT RULES:
-- Always respond in English
-- Answer ONLY using the provided context, but act as if you already know this information natively.
-- NEVER use phrases like "based on the resume", "according to the context", "as per the document", or "in the resume". Answer directly as if it's your own knowledge.
-- Speak professionally
-"""
+    # Fetch system prompt from DB (with cache)
+    system_prompt = ConfigService.get_system_prompt(agent="resume")
 
     messages.append(
         SystemMessage(content=system_prompt)

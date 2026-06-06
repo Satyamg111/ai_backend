@@ -1,10 +1,7 @@
-# ============================================
-# FILE:
-# app/api/routes/uploads.py
-# ============================================
-
 import os
 import fitz
+import shutil
+from typing import List, Optional
 
 from fastapi import (
     APIRouter,
@@ -42,59 +39,62 @@ os.makedirs(
 
 @router.post("/resume")
 async def upload_resume(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),
     admin=Depends(verify_admin)
 ):
 
     # ========================================
-    # VALIDATE FILE
+    # CONSOLIDATE AND VALIDATE ALL FILES
     # ========================================
 
-    if not file.filename.endswith(".pdf"):
+    uploaded_files = []
+    if file is not None and file.filename:
+        uploaded_files.append(file)
+    if files is not None:
+        for f in files:
+            if f.filename:
+                uploaded_files.append(f)
 
+    if not uploaded_files:
         raise HTTPException(
             status_code=400,
-            detail="Only PDF files are allowed"
+            detail="No PDF files uploaded. Provide file(s) under 'file' or 'files' form parameters."
         )
 
-    # ========================================
-    # SAVE FILE
-    # ========================================
-
-    file_path = os.path.join(
-        UPLOAD_DIR,
-        "resume.pdf"
-    )
-
-    with open(file_path, "wb") as buffer:
-
-        content = await file.read()
-
-        buffer.write(content)
+    for f in uploaded_files:
+        if not f.filename.endswith(".pdf"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only PDF files are allowed. Invalid file: {f.filename}"
+            )
 
     # ========================================
-    # EXTRACT PDF TEXT
+    # CLEAR OLD FILES & EMBEDDINGS
     # ========================================
 
     try:
-
-        doc = fitz.open(file_path)
-
-        text = ""
-
-        for page in doc:
-
-            text += page.get_text()
-
+        if os.path.exists(UPLOAD_DIR):
+            for item in os.listdir(UPLOAD_DIR):
+                item_path = os.path.join(UPLOAD_DIR, item)
+                if os.path.isfile(item_path):
+                    os.remove(item_path)
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
     except Exception as e:
+        print(f"Error clearing upload directory: {e}")
 
-        raise HTTPException(
-            status_code=500,
-            detail=f"PDF processing failed: {str(e)}"
-        )
+    try:
+        existing = collection.get()
+        if existing["ids"]:
+            collection.delete(
+                ids=existing["ids"]
+            )
+    except:
+        pass
 
     # ========================================
-    # SPLIT TEXT
+    # PROCESS FILES
     # ========================================
 
     splitter = RecursiveCharacterTextSplitter(
@@ -102,34 +102,42 @@ async def upload_resume(
         chunk_overlap=50
     )
 
-    chunks = splitter.split_text(text)
+    all_chunks = []
 
-    # ========================================
-    # CLEAR OLD EMBEDDINGS
-    # ========================================
+    for f in uploaded_files:
+        filename = os.path.basename(f.filename)
+        file_path = os.path.join(UPLOAD_DIR, filename)
 
-    try:
+        # Save file
+        with open(file_path, "wb") as buffer:
+            content = await f.read()
+            buffer.write(content)
 
-        existing = collection.get()
-
-        if existing["ids"]:
-
-            collection.delete(
-                ids=existing["ids"]
+        # Extract text
+        try:
+            doc = fitz.open(file_path)
+            text = ""
+            for page in doc:
+                text += page.get_text()
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"PDF processing failed for {filename}: {str(e)}"
             )
 
-    except:
-        pass
+        # Split text into chunks
+        chunks = splitter.split_text(text)
+        all_chunks.extend(chunks)
 
     # ========================================
-    # STORE NEW EMBEDDINGS
+    # STORE NEW EMBEDDINGS (BATCHED)
     # ========================================
 
-    for index, chunk in enumerate(chunks):
-
+    if all_chunks:
+        ids = [str(index) for index in range(len(all_chunks))]
         collection.add(
-            documents=[chunk],
-            ids=[str(index)]
+            documents=all_chunks,
+            ids=ids
         )
 
     # ========================================
@@ -138,6 +146,6 @@ async def upload_resume(
 
     return {
         "success": True,
-        "message": "Resume uploaded successfully",
-        "chunks": len(chunks)
+        "message": f"{len(uploaded_files)} resume(s) uploaded and processed successfully",
+        "chunks": len(all_chunks)
     }
