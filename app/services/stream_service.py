@@ -1,5 +1,6 @@
 from app.graphs.resume_graph import (
-    get_chat_history
+    get_chat_history,
+    add_message
 )
 
 from app.llm.openrouter import llm
@@ -73,4 +74,5 @@ Question:
             metadata_out["input_tokens"] = chunk.usage_metadata.get("input_tokens", 0)
             metadata_out["output_tokens"] = chunk.usage_metadata.get("output_tokens", 0)
 
-    # save history later if needed
+    # Save the streamed response to chat history
+    add_message(session_id, question, full_response)
