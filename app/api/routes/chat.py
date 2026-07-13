@@ -12,7 +12,8 @@ from app.models.chat_models import (
 )
 
 from app.graphs.resume_graph import (
-    resume_graph
+    resume_graph,
+    retrieve
 )
 
 from app.services.stream_service import (
@@ -101,7 +102,7 @@ async def stream_chat(
     ip = req.client.host if req.client else "unknown"
     session_id = request.session_id or str(uuid.uuid4())
 
-    result = resume_graph.invoke({
+    result = retrieve({
         "question": request.message,
         "session_id": session_id
     })

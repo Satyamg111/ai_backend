@@ -35,7 +35,7 @@ def get_chat_history(session_id: str):
     ).select("*").eq(
         "session_id", session_id
     ).order(
-        "created_at"
+        "created_at", desc=True
     ).limit(10).execute()
 
     return response.data

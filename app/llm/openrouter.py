@@ -16,11 +16,10 @@ OPENAI_BASE_URL = os.getenv(
 )
 
 llm = ChatOpenAI(
-    model="openai/gpt-3.5-turbo",
+    model=OPENAI_MODEL,
+    # model="openai/gpt-3.5-turbo",
     base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv(
-        "OPENROUTER_API_KEY"
-    ),
+    api_key=OPENROUTER_API_KEY,
     streaming=True,
-    temperature=0.7
+    temperature=0.1
 )
